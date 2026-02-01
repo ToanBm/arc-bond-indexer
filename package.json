@@ -1,0 +1,20 @@
+{
+  "name": "arc-bond-indexer",
+  "version": "0.1.0",
+  "scripts": {
+    "codegen": "envio codegen",
+    "dev": "envio dev",
+    "start": "envio start",
+    "build": "envio build"
+  },
+  "dependencies": {
+    "envio": "^2.32.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "typescript": "^5.4.5"
+  },
+  "optionalDependencies": {
+    "generated": "./generated"
+  }
+}

@@ -1,0 +1,40 @@
+type Pool {
+  id: ID!
+  poolId: BigInt!
+  bondToken: String!
+  bondSeries: String!
+  maturityDate: BigInt!
+  name: String!
+  symbol: String!
+  createdAt: BigInt!
+}
+
+type BondToken {
+  id: ID! # address
+  pool: Pool!
+  totalSupply: BigInt!
+}
+
+type UserPosition {
+  id: ID! # user_address + bond_token_address
+  user: String!
+  bondToken: String!
+  balance: BigInt!
+}
+
+type Activity {
+  id: ID!
+  activityType: String! # MINT, BURN, TRANSFER
+  user: String!
+  bondToken: String!
+  amount: BigInt!
+  timestamp: BigInt!
+  txHash: String!
+}
+
+type PoolSnapshot {
+  id: ID! # poolId + timestamp_day
+  pool: Pool!
+  totalSupply: BigInt!
+  timestamp: BigInt!
+}

@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: arc-bond-indexer
+networks:
+- id: 5042002
+  rpc_config:
+    url: https://rpc.testnet.arc.network
+  start_block: 22000000
+  contracts:
+  - name: BondFactory
+    address:
+    - 0x88b1B2e3D93eC6AECa6818E904852cE6c3b80759
+    handler: src/EventHandlers.ts
+    events:
+    - event: PoolCreated(uint256 indexed poolId, address indexed bondToken, address indexed bondSeries, uint256 maturityDate, string name, string symbol)
+  - name: BondToken
+    handler: src/EventHandlers.ts
+    events:
+    - event: Transfer(address indexed from, address indexed to, uint256 value)
+    - event: Approval(address indexed owner, address indexed spender, uint256 value)
+  - name: BondSeries
+    handler: src/EventHandlers.ts
+    events:
+    - event: OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
+unordered_multichain_mode: true
+preload_handlers: true
