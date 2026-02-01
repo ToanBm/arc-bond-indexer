@@ -1,6 +1,7 @@
 import {
   BondFactory,
   BondToken,
+  BondSeries,
   Pool,
   UserPosition,
   Activity,
@@ -10,6 +11,7 @@ import {
 // Helper to generate IDs
 const getPositionId = (user: string, token: string) => `${user}-${token}`;
 
+// 1. BondFactory Handlers
 BondFactory.PoolCreated.contractRegister(({ event, context }: any) => {
   context.addBondToken(event.params.bondToken);
   context.addBondSeries(event.params.bondSeries);
@@ -19,7 +21,6 @@ BondFactory.PoolCreated.handler(async ({ event, context }: any) => {
   const poolId = event.params.poolId.toString();
   const bondTokenAddress = event.params.bondToken.toLowerCase();
 
-  // Create Pool Entity
   const pool: any = {
     id: poolId,
     poolId: event.params.poolId,
@@ -30,10 +31,8 @@ BondFactory.PoolCreated.handler(async ({ event, context }: any) => {
     symbol: event.params.symbol,
     createdAt: BigInt(event.block.timestamp),
   };
-
   context.Pool.set(pool);
 
-  // Initialize BondToken Entity
   const bondTokenEntity: any = {
     id: bondTokenAddress,
     pool_id: poolId,
@@ -42,6 +41,7 @@ BondFactory.PoolCreated.handler(async ({ event, context }: any) => {
   context.BondToken.set(bondTokenEntity);
 });
 
+// 2. BondToken Handlers
 BondToken.Transfer.handler(async ({ event, context }: any) => {
   const amount = event.params.value;
   const from = event.params.from.toLowerCase();
@@ -50,13 +50,12 @@ BondToken.Transfer.handler(async ({ event, context }: any) => {
   const timestamp = BigInt(event.block.timestamp);
   const txHash = event.transaction.hash;
 
-  // 1. Determine Activity Type
   let activityType = "TRANSFER";
   if (from === "0x0000000000000000000000000000000000000000") activityType = "MINT";
   else if (to === "0x0000000000000000000000000000000000000000") activityType = "BURN";
 
-  // 2. Create Activity Record
-  const activityId = `${txHash}-${event.logIndex}`;
+  // ID chuẩn: txHash + logIndex để đảm bảo duy nhất
+  const activityId = `${txHash}_${event.logIndex}`;
   const activity: any = {
     id: activityId,
     activityType: activityType,
@@ -68,69 +67,49 @@ BondToken.Transfer.handler(async ({ event, context }: any) => {
   };
   context.Activity.set(activity);
 
-  // 3. Update Sender Position (if not Mint)
   if (activityType !== "MINT") {
     const senderId = getPositionId(from, tokenAddress);
     let senderPos = await context.UserPosition.get(senderId);
-
     if (!senderPos) {
-      senderPos = {
-        id: senderId,
-        user: from,
-        bondToken: tokenAddress,
-        balance: 0n,
-      };
+      senderPos = { id: senderId, user: from, bondToken: tokenAddress, balance: 0n };
     }
-
-    context.UserPosition.set({
-      ...senderPos,
-      balance: senderPos.balance - amount,
-    });
+    context.UserPosition.set({ ...senderPos, balance: senderPos.balance - amount });
   }
 
-  // 4. Update Receiver Position (if not Burn)
   if (activityType !== "BURN") {
     const receiverId = getPositionId(to, tokenAddress);
     let receiverPos = await context.UserPosition.get(receiverId);
-
     if (!receiverPos) {
-      receiverPos = {
-        id: receiverId,
-        user: to,
-        bondToken: tokenAddress,
-        balance: 0n,
-      };
+      receiverPos = { id: receiverId, user: to, bondToken: tokenAddress, balance: 0n };
     }
-
-    context.UserPosition.set({
-      ...receiverPos,
-      balance: receiverPos.balance + amount,
-    });
+    context.UserPosition.set({ ...receiverPos, balance: receiverPos.balance + amount });
   }
 
-  // 5. Update BondToken Total Supply and Create Snapshot
   let bondToken = await context.BondToken.get(tokenAddress);
   if (bondToken) {
     let newTotalSupply = bondToken.totalSupply;
     if (activityType === "MINT") newTotalSupply += amount;
     else if (activityType === "BURN") newTotalSupply -= amount;
 
-    if (newTotalSupply !== bondToken.totalSupply) {
-      context.BondToken.set({
-        ...bondToken,
-        totalSupply: newTotalSupply,
-      });
+    context.BondToken.set({ ...bondToken, totalSupply: newTotalSupply });
 
-      // Create Snapshot for Charting (daily bucket)
-      const dayInternal = Math.floor(Number(timestamp) / 86400);
-      const snapshotId = `${bondToken.pool_id}-${dayInternal}`;
-      const snapshot: any = {
-        id: snapshotId,
-        pool_id: bondToken.pool_id,
-        totalSupply: newTotalSupply,
-        timestamp: timestamp,
-      };
-      context.PoolSnapshot.set(snapshot);
-    }
+    const dayInternal = Math.floor(Number(timestamp) / 86400);
+    const snapshotId = `${bondToken.pool_id}_${dayInternal}`;
+    context.PoolSnapshot.set({
+      id: snapshotId,
+      pool_id: bondToken.pool_id,
+      totalSupply: newTotalSupply,
+      timestamp: timestamp,
+    });
   }
+});
+
+// THÊM CÁC HANDLER TRỐNG ĐỂ TRÁNH CRASH (BẮT BUỘC)
+BondToken.Approval.handler(async ({ event, context }: any) => {
+  // Không cần xử lý logic cho Approval nhưng phải có handler để không crash
+});
+
+// 3. BondSeries Handlers
+BondSeries.OwnershipTransferred.handler(async ({ event, context }: any) => {
+  // Tương tự, để trống nếu chưa cần theo dõi lịch sử đổi chủ
 });
