@@ -4,11 +4,11 @@ networks:
 - id: 5042002
   rpc_config:
     url: https://rpc.testnet.arc.network
-  start_block: 22000000
+  start_block: 0
   contracts:
   - name: BondFactory
     address:
-    - 0x88b1B2e3D93eC6AECa6818E904852cE6c3b80759
+    - 0x4fA228e2eADF00248D770527bfb15c536a8A40bF
     handler: src/EventHandlers.ts
     events:
     - event: PoolCreated(uint256 indexed poolId, address indexed bondToken, address indexed bondSeries, uint256 maturityDate, string name, string symbol)
